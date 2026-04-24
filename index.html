@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<title>🎓 Grade System</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: radial-gradient(circle at top, #111827, #0b0f19);
+    color: #e5e7eb;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+.container {
+    display: flex;
+    gap: 25px;
+    width: 950px;
+}
+
+.card {
+    background: rgba(255,255,255,0.06);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.08);
+    padding: 22px;
+    border-radius: 18px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+}
+
+.left, .right { flex: 1; }
+
+h2 {
+    text-align: center;
+    margin-top: 0;
+}
+
+input {
+    width: 100%;
+    padding: 12px;
+    margin: 6px 0 14px;
+    border-radius: 12px;
+    border: none;
+    outline: none;
+    background: rgba(255,255,255,0.08);
+    color: #e5e7eb;
+    font-size: 15px;
+}
+
+.segment {
+    display: flex;
+    gap: 10px;
+    margin: 10px 0 20px;
+}
+
+.segment input { display: none; }
+
+.segment label {
+    flex: 1;
+    text-align: center;
+    padding: 10px;
+    border-radius: 12px;
+    cursor: pointer;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.1);
+    transition: 0.2s;
+    user-select: none;
+}
+
+.segment input:checked + label {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    transform: scale(1.03);
+}
+
+.alert {
+    padding: 12px;
+    border-radius: 12px;
+    margin-top: 12px;
+    font-size: 14px;
+}
+
+.ok { background: rgba(34,197,94,0.2); border: 1px solid #22c55e; }
+.bad { background: rgba(239,68,68,0.2); border: 1px solid #ef4444; }
+.info { background: rgba(59,130,246,0.2); border: 1px solid #3b82f6; }
+
+.big { font-size: 16px; line-height: 1.7; }
+
+#examSection { display: none; }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<!-- LEFT -->
+<div class="card left">
+
+<h2>📚 Γραπτές Εργασίες</h2>
+
+<div class="segment">
+    <input type="radio" name="ge" id="ge4" value="4" checked>
+    <label for="ge4">4 ΓΕ</label>
+
+    <input type="radio" name="ge" id="ge5" value="5">
+    <label for="ge5">5 ΓΕ</label>
+</div>
+
+<div id="geInputs"></div>
+
+<div id="status" class="alert info">🧠 Συμπλήρωσε βαθμούς</div>
+
+<div id="deliveryBox" class="alert info">📦 Παραδόσεις: 0 / 0</div>
+
+</div>
+
+<!-- RIGHT -->
+<div class="card right">
+
+<h2>📊 Αποτελέσματα</h2>
+
+<div id="examSection">
+<label>📝 Εξέταση</label>
+<input type="text" id="exam" inputmode="decimal">
+</div>
+
+<div id="finalBox" class="alert info big">🎯 Περιμένω δεδομένα...</div>
+
+<div id="comment" class="alert info big">🙂</div>
+
+</div>
+
+</div>
+
+<script>
+
+let numGE = 4;
+
+const geContainer = document.getElementById("geInputs");
+const statusBox = document.getElementById("status");
+const deliveryBox = document.getElementById("deliveryBox");
+const examInput = document.getElementById("exam");
+const finalBox = document.getElementById("finalBox");
+const examSection = document.getElementById("examSection");
+const commentBox = document.getElementById("comment");
+
+/* 🔥 normalize comma → dot */
+function normalizeInput(value) {
+    if (typeof value !== "string") return value;
+    return value.replace(/,/g, ".").trim();
+}
+
+/* 🔥 safe validation */
+function isValidGrade(v) {
+    if (isNaN(v)) return false;
+    if (v < 0 || v > 10) return false;
+    return Math.round(v * 100) / 100 === v;
+}
+
+/* RADIO */
+function initRadio() {
+    document.querySelectorAll("input[name='ge']").forEach(radio => {
+        radio.addEventListener("change", () => {
+            numGE = parseInt(radio.value);
+            createInputs();
+            update();
+        });
+    });
+}
+
+/* INPUTS */
+function createInputs() {
+    geContainer.innerHTML = "";
+
+    for (let i = 0; i < numGE; i++) {
+        geContainer.innerHTML += `
+            <div>
+                📘 ΓΕ ${i+1}
+                <input type="text" class="ge" inputmode="decimal">
+            </div>
+        `;
+    }
+
+    attachListeners();
+}
+
+/* parse multiple values in same field */
+function parseGrades(raw) {
+    if (!raw) return [];
+
+    return raw
+        .split(/[\s;]+/)
+        .map(normalizeInput)
+        .filter(x => x !== "")
+        .map(Number)
+        .filter(v => !isNaN(v));
+}
+
+/* DATA */
+function getData() {
+
+    let inputs = document.querySelectorAll(".ge");
+
+    let sum = 0;
+    let delivered = 0;
+
+    inputs.forEach((el) => {
+
+        let values = parseGrades(el.value);
+
+        values.forEach(v => {
+
+            if (!isValidGrade(v)) {
+                el.style.border = "2px solid #ef4444";
+                return;
+            } else {
+                el.style.border = "none";
+            }
+
+            sum += v;
+            delivered++;
+        });
+
+    });
+
+    return { sum, delivered };
+}
+
+/* COMMENT */
+function getComment(finalGrade) {
+    if (finalGrade >= 8.5) return "🎉 ΠΕΡΑΣΕΣ ΜΕ ΣΤΥΛ 😎";
+    if (finalGrade >= 7) return "😌 ΠΕΡΑΣΕΣ ΑΝΕΤΑ";
+    if (finalGrade >= 5.5) return "🙂 ΠΕΡΑΣΕΣ ΟΡΙΑΚΑ";
+    if (finalGrade >= 5) return "😎 5ΑΡΙ = ΞΕΜΠΕΡΔΕΨΕΣ";
+    return "💀 ΔΕΝ ΠΕΡΑΣΕΣ";
+}
+
+/* UPDATE */
+function update() {
+
+    let { sum, delivered } = getData();
+
+    let avg = sum / numGE;
+
+    let minSum = numGE === 4 ? 20 : 25;
+    let minDelivered = 3;
+
+    let eligible = (sum >= minSum) && (delivered >= minDelivered);
+
+    deliveryBox.innerHTML = `📦 Παραδόσεις: ${delivered} / ${numGE}`;
+    deliveryBox.className = delivered >= minDelivered ? "alert ok" : "alert bad";
+
+    if (!eligible) {
+        statusBox.className = "alert bad";
+        statusBox.innerHTML = "❌ Δεν πληρούνται προϋποθέσεις";
+
+        examSection.style.display = "none";
+        finalBox.innerHTML = "🔒 Locked";
+        commentBox.innerHTML = "";
+        return;
+    }
+
+    statusBox.className = "alert ok";
+    statusBox.innerHTML = "✅ Δικαίωμα συμμετοχής";
+
+    examSection.style.display = "block";
+
+    let examRaw = normalizeInput(examInput.value);
+    let exam = parseFloat(examRaw);
+
+    if (isNaN(exam)) {
+        finalBox.innerHTML = "⏳ Βάλε βαθμό εξέτασης";
+        commentBox.innerHTML = "";
+        return;
+    }
+
+    if (exam < 5 || exam > 10) {
+        examInput.style.border = "2px solid #ef4444";
+        finalBox.innerHTML = "❌ Εξέταση 5–10";
+        commentBox.innerHTML = "";
+        return;
+    } else {
+        examInput.style.border = "none";
+    }
+
+    let final = 0.3 * avg + 0.7 * exam;
+
+    finalBox.innerHTML = `
+📊 Σύνολο ΓΕ: ${sum.toFixed(2)}<br>
+📦 Παραδόσεις: ${delivered}<br>
+📝 Εξέταση: ${exam.toFixed(2)}<br><br>
+🎯 <b style="font-size:24px;">Τελικός: ${final.toFixed(2)}</b>
+`;
+
+    commentBox.innerHTML = getComment(final);
+}
+
+/* LISTENERS */
+function attachListeners() {
+    document.querySelectorAll(".ge").forEach(el => {
+        el.addEventListener("input", update);
+    });
+
+    examInput.addEventListener("input", update);
+}
+
+/* INIT */
+initRadio();
+createInputs();
+update();
+
+</script>
+
+</body>
+</html>
